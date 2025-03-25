@@ -1,13 +1,17 @@
-use std::fs;
+mod lexer;
+use crate::lexer::read_nfa_convert_to_dfa;
 
 fn main() {
-    let file_path = "lexer_input_test.zig";
-    let separate_chars = [' ', '\n', '\r', '\t'];
-    println!("Reading {file_path}");
-    let contents = fs::read_to_string(file_path).expect("Should have been able to read the file");
-    println!("Text with:\n{contents}");
-    let tokens : Vec<&str> = contents.split(&separate_chars[..]).collect();
-    println!("Unfiltred:\n{:?}",tokens);
-    let filtred_tokens : Vec<&str> = tokens.into_iter().filter(|&x| !x.is_empty()).collect();
-    println!("Filtered Tokens:\n{:?}",filtred_tokens);
+    // Unwrap the Option and store the tuple in a variable.
+    let conversion = read_nfa_convert_to_dfa("automato/all-Zigzin-NFA-transitions.csv")
+        .expect("Conversion failed");
+
+    // Destructure the tuple into DFA and NFA variables.
+    let (dfa, nfa) = conversion;
+
+    // Now you can use dfa and nfa after this point.
+    println!("DFA: {:?}", dfa);
+    println!("NFA: {:?}", nfa);
+
+    // Additional processing using dfa and nfa...
 }
