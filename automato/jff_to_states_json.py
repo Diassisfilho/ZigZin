@@ -28,7 +28,10 @@ for state in root.iter('state'):
     if state.find('initial') is not None:
         initial_states.append(state_id)
     if state.find('final') is not None:
-        final_states.append(state_id)
+        if state.find('label') is not None:
+            final_states.append([state_id, state.find('label').text]) 
+            continue
+        final_states.append([state_id])
 
 output_data = {
     "initial": initial_states,

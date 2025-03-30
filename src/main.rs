@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let transitions = read_nfa_transitions_csv("automato/all-Zigzin-NFA-transitions.csv")?;
 
     // Create a HashSet of accept states [1,2,3,4,5,6,7,8,9,10,11].
-    let accept_states: HashSet<usize> = [
+    let accept_states: HashMap<usize> = [
         5, 6, 7, 10, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 30, 31, 32, 33, 34,
     ]
     .iter()

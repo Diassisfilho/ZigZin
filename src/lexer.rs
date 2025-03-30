@@ -10,7 +10,8 @@ use std::fs::File;
 pub struct NFA {
     pub transitions: HashMap<(usize, Option<char>), Vec<usize>>,
     pub start: usize,
-    pub accept: HashSet<usize>,
+    /// Mapping from an accept state to its label.
+    pub accept: HashMap<usize, String>,
 }
 
 /// Representation of a DFA.
@@ -19,14 +20,15 @@ pub struct NFA {
 pub struct DFA {
     pub transitions: HashMap<(usize, char), usize>,
     pub start: usize,
-    pub accept: HashSet<usize>,
+    /// Mapping from an accept state to its label.
+    pub accept: HashMap<usize, String>,
 }
 
 /// Computes the epsilon closure of a set of NFA states.
 pub fn epsilon_closure(nfa: &NFA, states: &HashSet<usize>) -> HashSet<usize> {
     let mut closure = states.clone();
     let mut stack: Vec<usize> = states.iter().cloned().collect();
-    
+
     while let Some(state) = stack.pop() {
         if let Some(next_states) = nfa.transitions.get(&(state, None)) {
             for &next in next_states {
@@ -36,14 +38,13 @@ pub fn epsilon_closure(nfa: &NFA, states: &HashSet<usize>) -> HashSet<usize> {
             }
         }
     }
-    
     closure
 }
 
 /// Given a set of NFA states and a symbol, returns the set of states reachable by that symbol.
 pub fn move_nfa(nfa: &NFA, states: &HashSet<usize>, symbol: char) -> HashSet<usize> {
     let mut result = HashSet::new();
-    
+
     for &state in states {
         if let Some(next_states) = nfa.transitions.get(&(state, Some(symbol))) {
             for &next in next_states {
@@ -51,7 +52,6 @@ pub fn move_nfa(nfa: &NFA, states: &HashSet<usize>, symbol: char) -> HashSet<usi
             }
         }
     }
-    
     result
 }
 
@@ -59,33 +59,40 @@ pub fn move_nfa(nfa: &NFA, states: &HashSet<usize>, symbol: char) -> HashSet<usi
 /// `alphabet` is the set of input symbols (excluding ε).
 pub fn convert_nfa_to_dfa(nfa: &NFA, alphabet: &HashSet<char>) -> DFA {
     let mut dfa_transitions = HashMap::new();
-    let mut dfa_accept = HashSet::new();
-    
+    let mut dfa_accept: HashMap<usize, String> = HashMap::new();
+
     // Mapping from a set of NFA states (as a DFA state) to its index.
     let mut state_mapping: HashMap<BTreeSet<usize>, usize> = HashMap::new();
     let mut dfa_states: Vec<BTreeSet<usize>> = Vec::new();
-    
+
     // Start with the epsilon closure of the NFA's start state.
     let mut start_set = BTreeSet::new();
     start_set.insert(nfa.start);
-    let start_set_hash: HashSet<usize> = start_set.into_iter().collect();
+    let start_set_hash: HashSet<usize> = start_set.iter().cloned().collect();
     let start_closure: BTreeSet<usize> = epsilon_closure(nfa, &start_set_hash).into_iter().collect();
-    
+
     // Assign index 0 to the start closure.
     state_mapping.insert(start_closure.clone(), 0);
     dfa_states.push(start_closure.clone());
-    
-    // Mark the DFA state as accepting if any NFA state in the set is accepting.
-    if !start_closure.is_disjoint(&nfa.accept.iter().cloned().collect::<BTreeSet<_>>()) {
-        dfa_accept.insert(0);
+
+    // Check if the start closure contains any NFA accept state.
+    let nfa_accept_states: HashSet<usize> = nfa.accept.keys().cloned().collect();
+    if !start_closure.is_disjoint(&nfa_accept_states) {
+        // Collect the labels from all NFA accept states in the closure.
+        let labels: Vec<String> = start_closure
+            .iter()
+            .filter_map(|s| nfa.accept.get(s))
+            .cloned()
+            .collect();
+        dfa_accept.insert(0, labels.join(", "));
     }
-    
+
     let mut queue = VecDeque::new();
     queue.push_back(0);
-    
+
     while let Some(current_index) = queue.pop_front() {
         let current_state_set = dfa_states[current_index].clone();
-        
+
         // Process each symbol in the alphabet.
         for &symbol in alphabet {
             // Compute the move and then the epsilon closure.
@@ -94,7 +101,7 @@ pub fn convert_nfa_to_dfa(nfa: &NFA, alphabet: &HashSet<char>) -> DFA {
                 continue;
             }
             let next_closure: BTreeSet<usize> = epsilon_closure(nfa, &move_set).into_iter().collect();
-            
+
             // Check if this state set has already been encountered.
             let next_index = if let Some(&index) = state_mapping.get(&next_closure) {
                 index
@@ -103,19 +110,24 @@ pub fn convert_nfa_to_dfa(nfa: &NFA, alphabet: &HashSet<char>) -> DFA {
                 state_mapping.insert(next_closure.clone(), new_index);
                 dfa_states.push(next_closure.clone());
                 queue.push_back(new_index);
-                
+
                 // If any state in the closure is an accepting state in the NFA, mark it as accepting.
-                if !next_closure.is_disjoint(&nfa.accept.iter().cloned().collect::<BTreeSet<_>>()) {
-                    dfa_accept.insert(new_index);
+                if !next_closure.is_disjoint(&nfa_accept_states) {
+                    let labels: Vec<String> = next_closure
+                        .iter()
+                        .filter_map(|s| nfa.accept.get(s))
+                        .cloned()
+                        .collect();
+                    dfa_accept.insert(new_index, labels.join(", "));
                 }
                 new_index
             };
-            
+
             // Record the DFA transition.
             dfa_transitions.insert((current_index, symbol), next_index);
         }
     }
-    
+
     DFA {
         transitions: dfa_transitions,
         start: 0,
