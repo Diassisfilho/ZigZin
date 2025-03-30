@@ -123,6 +123,8 @@ def convert_nfa_to_dfa(nfa: NFA, alphabet: Set[str]) -> DFA:
                 queue.append(next_index)
                 if next_closure & nfa_accept_set:
                     labels = [nfa.accept[s] for s in next_closure if s in nfa.accept]
+                    if "id" in labels and len(labels) > 1:
+                        labels.remove("id")
                     dfa_accept[next_index] = ", ".join(labels)
             dfa_transitions[(current_index, symbol)] = next_index
 
@@ -219,9 +221,9 @@ if __name__ == "__main__":
     # dfa = convert_nfa_to_dfa(nfa, alphabet)
     # print("DFA:", dfa)
 
-    transitions = read_nfa_transitions_csv("automato/all-Zigzin-NFA-transitions.csv")
-    accept = read_zigzin_states_types("automato/Zigzin-NFA-states-types.json")
+    transitions = read_nfa_transitions_csv("automato/NFA-transitions.csv")
+    accept = read_zigzin_states_types("automato/NFA-states.json")
     nfa = NFA(transitions,0,accept)
     dfa = convert_nfa_to_dfa(nfa, alphabet=get_alphabet_from_transitions(transitions))
-    write_dfa_to_csv(dfa,"automato/all-Zigzin-DFA-transitions.csv")
-    write_dfa_accept_to_json(dfa.accept, "automato/all-Zigzin-DFA-final-states.json")
+    write_dfa_to_csv(dfa,"automato/DFA-transitions.csv")
+    write_dfa_accept_to_json(dfa.accept, "automato/DFA-final-states.json")

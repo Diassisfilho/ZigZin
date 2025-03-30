@@ -4,18 +4,6 @@ use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use serde::Deserialize;
-
-/// Representation of an NFA.
-/// Transitions are stored in a HashMap where the key is a tuple of a state and an optional input symbol.
-/// An input symbol of None represents an ε (epsilon) transition.
-#[derive(Debug, Clone)]
-pub struct NFA {
-    pub transitions: HashMap<(usize, Option<char>), Vec<usize>>,
-    pub start: usize,
-    /// Mapping from an accept state to its label.
-    pub accept: HashMap<usize, String>,
-}
-
 /// Representation of a DFA.
 /// Transitions are stored in a HashMap where the key is a tuple of a DFA state and an input symbol.
 #[derive(Debug, Clone)]
@@ -78,22 +66,23 @@ pub fn read_accept_states_from_json(file_path: &str) -> Result<HashMap<usize, St
 ///   - A boolean indicating if the input ended in an accept state (true for accepted).
 ///   - The state number at which processing stopped.
 /// If a transition for a character is missing, processing stops and the function returns false along with the last valid state.
-pub fn process_input(dfa: &DFA, input: String) -> (bool, usize) {
+pub fn process_input(dfa: &DFA, input: String) -> (bool, usize, String) {
     let mut current_state = dfa.start;
 
     for ch in input.chars() {
         if let Some(&next_state) = dfa.transitions.get(&(current_state, ch)) {
             current_state = next_state;
         } else {
-            return (false, current_state);
+            return (false, current_state, "".to_string());
         }
     }
     
     let accepted = dfa.accept.contains_key(&current_state);
-    (accepted, current_state)
+    let (_,label) = dfa.accept.get_key_value(&current_state).expect(&"");
+    (accepted, current_state, label.to_string())
 }
 
-pub fn process_file_input(dfa: &DFA, file_path: &str) -> Result<(bool, usize), Box<dyn Error>> {
+pub fn process_file_input(dfa: &DFA, file_path: &str) -> Result<(bool, usize, String), Box<dyn Error>> {
     let content = std::fs::read_to_string(file_path)?;
     Ok(process_input(dfa, content))
 }
@@ -115,8 +104,9 @@ mod tests {
             accept,
         };
     
-        let (result, state) = process_input(&dfa, "a".to_string());
+        let (result, state, label) = process_input(&dfa, "a".to_string());
         assert_eq!(result, true);
         assert_eq!(state, 1);
+        assert_eq!(label, "accepted".to_string());
     }
 }
