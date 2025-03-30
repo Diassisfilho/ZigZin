@@ -213,25 +213,29 @@ pub fn read_nfa_transitions_csv(file_path: &str) -> Result<HashMap<(usize, Optio
 //     return Some((dfa,nfa));
 // }
 
+pub fn process_file_input(dfa: &DFA, file_path: &str) -> Result<(bool, usize), Box<dyn Error>> {
+    let content = std::fs::read_to_string(file_path)?;
+    Ok(process_input(dfa, content))
+}
+
 /// Processes an input file using the provided DFA.
 /// It returns a tuple:
 ///   - A boolean indicating if the input ended in an accept state (true for accepted).
 ///   - The state number at which processing stopped.
 /// If a transition for a character is missing, processing stops and the function returns false along with the last valid state.
-pub fn process_file_input(dfa: &DFA, file_path: &str) -> Result<(bool, usize), Box<dyn Error>> {
-    let content = std::fs::read_to_string(file_path)?;
+pub fn process_input(dfa: &DFA, input: String) -> (bool, usize) {
     let mut current_state = dfa.start;
 
-    for ch in content.chars() {
+    for ch in input.chars() {
         if let Some(&next_state) = dfa.transitions.get(&(current_state, ch)) {
             current_state = next_state;
         } else {
-            return Ok((false, current_state));
+            return (false, current_state);
         }
     }
 
     let accepted = dfa.accept.contains_key(&current_state);
-    Ok((accepted, current_state))
+    (accepted, current_state)
 }
 
 /// Writes the DFA transitions to a CSV file.
@@ -254,3 +258,26 @@ pub fn write_dfa_to_csv(dfa: &DFA, file_path: &str) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_process_input_accepted() {
+        let mut transitions = HashMap::new();
+        transitions.insert((0, 'a'), 1);
+        let start = 0;
+        let mut accept = HashMap::new();
+        accept.insert(1, "accepted".to_string());
+    
+        let dfa = DFA {
+            transitions,
+            start,
+            accept,
+        };
+    
+        let (result, state) = process_input(&dfa, "a".to_string());
+        assert_eq!(result, true);
+        assert_eq!(state, 1);
+    }
+}

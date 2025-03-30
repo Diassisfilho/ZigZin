@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // println!("nfa acc: {:?}", nfa.accept);
 
     // Process input from a file using the DFA.
-    let (accepted, final_state) = process_file_input(&dfa, "lexer_first_test.txt")?;
+    let (accepted, final_state) = process_file_input(&dfa, "tests/lexer_first_test.txt")?;
     if accepted {
         println!("Input accepted. Final state: {}", final_state);
     } else {
