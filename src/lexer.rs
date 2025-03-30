@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque, BTreeSet};
 use std::error::Error;
+use std::fs;
+use std::fs::File;
 
 /// Representation of an NFA.
 /// Transitions are stored in a HashMap where the key is a tuple of a state and an optional input symbol.
@@ -193,3 +195,46 @@ pub fn read_nfa_convert_to_dfa(path: &str) -> Option<(DFA,NFA)> {
 
     return Some((dfa,nfa));
 }
+
+/// Processes an input file using the provided DFA.
+/// It returns a tuple:
+///   - A boolean indicating if the input ended in an accept state (true for accepted).
+///   - The state number at which processing stopped.
+/// If a transition for a character is missing, processing stops and the function returns false along with the last valid state.
+pub fn process_file_input(dfa: &DFA, file_path: &str) -> Result<(bool, usize), Box<dyn Error>> {
+    let content = fs::read_to_string(file_path)?;
+    let mut current_state = dfa.start;
+
+    for ch in content.chars() {
+        if let Some(&next_state) = dfa.transitions.get(&(current_state, ch)) {
+            current_state = next_state;
+        } else {
+            // Transition not found: halt processing and indicate an error.
+            return Ok((false, current_state));
+        }
+    }
+
+    let accepted = dfa.accept.contains(&current_state);
+    Ok((accepted, current_state))
+}
+
+/// Writes the DFA transitions to a CSV file.
+/// The file will have a header row "From,Input,To".
+pub fn write_dfa_to_csv(dfa: &DFA, file_path: &str) -> Result<(), Box<dyn Error>> {
+    let file = File::create(file_path)?;
+    let mut wtr = csv::Writer::from_writer(file);
+
+    // Write header
+    wtr.write_record(&["From", "Input", "To"])?;
+
+    // Write each transition.
+    for ((from, input), tos) in &dfa.transitions {
+        // Convert the transition values to string
+        let record = [from.to_string(), input.to_string(), tos.to_string()];
+        wtr.write_record(&record)?;
+    }
+
+    wtr.flush()?;
+    Ok(())
+}
+

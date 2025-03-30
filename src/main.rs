@@ -1,17 +1,57 @@
+use std::collections::HashSet;
+use std::error::Error;
+
 mod lexer;
-use crate::lexer::read_nfa_convert_to_dfa;
+use lexer::{
+    convert_nfa_to_dfa, process_file_input, read_nfa_transitions_csv, write_dfa_to_csv, DFA, NFA,
+};
 
-fn main() {
-    // Unwrap the Option and store the tuple in a variable.
-    let conversion = read_nfa_convert_to_dfa("automato/all-Zigzin-NFA-transitions.csv")
-        .expect("Conversion failed");
+fn main() -> Result<(), Box<dyn Error>> {
+    // Read NFA transitions from CSV file.
+    let transitions = read_nfa_transitions_csv("automato/all-Zigzin-NFA-transitions.csv")?;
 
-    // Destructure the tuple into DFA and NFA variables.
-    let (dfa, nfa) = conversion;
+    // Create a HashSet of accept states [1,2,3,4,5,6,7,8,9,10,11].
+    let accept_states: HashSet<usize> = [
+        5, 6, 7, 10, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 30, 31, 32, 33, 34,
+    ]
+    .iter()
+    .cloned()
+    .collect();
 
-    // Now you can use dfa and nfa after this point.
-    println!("DFA: {:?}", dfa);
-    println!("NFA: {:?}", nfa);
+    // Define the NFA (assuming start state is 0).
+    let nfa = NFA {
+        transitions,
+        start: 0,
+        accept: accept_states.clone(),
+    };
 
-    // Additional processing using dfa and nfa...
+    // Create the alphabet for the NFA.
+    let mut alphabet = HashSet::new();
+    for (&(_, symbol), _) in &nfa.transitions {
+        if let Some(ch) = symbol {
+            alphabet.insert(ch);
+        }
+    }
+
+    // Convert the NFA to a DFA.
+    let dfa = convert_nfa_to_dfa(&nfa, &alphabet);
+
+    // write_dfa_to_csv(&dfa, "dfa_transitions.csv")?;
+    // println!("DFA transitions written to dfa_transitions.csv");
+
+    // println!("dfa acc: {:?}", dfa.accept);
+    // println!("nfa acc: {:?}", nfa.accept);
+
+    // Process input from a file using the DFA.
+    let (accepted, final_state) = process_file_input(&dfa, "lexer_first_test.txt")?;
+    if accepted {
+        println!("Input accepted. Final state: {}", final_state);
+    } else {
+        println!(
+            "Input rejected or error encountered. Last state: {}",
+            final_state
+        );
+    }
+
+    Ok(())
 }
