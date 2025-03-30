@@ -1,9 +1,9 @@
-use std::collections::HashSet;
+use std::collections::{HashMap,HashSet};
 use std::error::Error;
 
 mod lexer;
 use lexer::{
-    convert_nfa_to_dfa, process_file_input, read_nfa_transitions_csv, write_dfa_to_csv, DFA, NFA,
+    read_zigzin_states_types,convert_nfa_to_dfa, process_file_input, read_nfa_transitions_csv, write_dfa_to_csv, DFA, NFA,
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -11,12 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let transitions = read_nfa_transitions_csv("automato/all-Zigzin-NFA-transitions.csv")?;
 
     // Create a HashSet of accept states [1,2,3,4,5,6,7,8,9,10,11].
-    let accept_states: HashMap<usize> = [
-        5, 6, 7, 10, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 30, 31, 32, 33, 34,
-    ]
-    .iter()
-    .cloned()
-    .collect();
+    let accept_states: HashMap<usize, String> = read_zigzin_states_types("automato/Zigzin-NFA-states-types.json")?;
 
     // Define the NFA (assuming start state is 0).
     let nfa = NFA {
@@ -39,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // write_dfa_to_csv(&dfa, "dfa_transitions.csv")?;
     // println!("DFA transitions written to dfa_transitions.csv");
 
-    // println!("dfa acc: {:?}", dfa.accept);
+    println!("dfa acc: {:?}", dfa.accept);
     // println!("nfa acc: {:?}", nfa.accept);
 
     // Process input from a file using the DFA.

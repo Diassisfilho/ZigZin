@@ -2,6 +2,26 @@ use std::collections::{HashMap, HashSet, VecDeque, BTreeSet};
 use std::error::Error;
 use std::fs;
 use std::fs::File;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct ZigZinStatesTypes {
+    initial: Vec<usize>,
+    #[serde(rename = "final")]
+    finals: Vec<(usize, String)>,
+}
+
+/// Reads the ZigZin-NFA-states-types.json file and converts it into an NFA accept structure.
+/// Returns a HashMap where each key is an accept state and the value is its label.
+pub fn read_zigzin_states_types(file_path: &str) -> Result<HashMap<usize, String>, Box<dyn Error>> {
+    let content = fs::read_to_string(file_path)?;
+    let states: ZigZinStatesTypes = serde_json::from_str(&content)?;
+    let mut accept = HashMap::new();
+    for (state, label) in states.finals {
+        accept.insert(state, label);
+    }
+    Ok(accept)
+}
 
 /// Representation of an NFA.
 /// Transitions are stored in a HashMap where the key is a tuple of a state and an optional input symbol.
@@ -57,28 +77,26 @@ pub fn move_nfa(nfa: &NFA, states: &HashSet<usize>, symbol: char) -> HashSet<usi
 
 /// Converts an NFA to a DFA using the subset construction algorithm.
 /// `alphabet` is the set of input symbols (excluding ε).
-pub fn convert_nfa_to_dfa(nfa: &NFA, alphabet: &HashSet<char>) -> DFA {
-    let mut dfa_transitions = HashMap::new();
-    let mut dfa_accept: HashMap<usize, String> = HashMap::new();
+pub fn convert_nfa_to_dfa(nfa: &NFA, alphabet: &std::collections::HashSet<char>) -> DFA {
+    use std::collections::BTreeSet;
+    let mut dfa_transitions = std::collections::HashMap::new();
+    let mut dfa_accept: std::collections::HashMap<usize, String> = std::collections::HashMap::new();
 
-    // Mapping from a set of NFA states (as a DFA state) to its index.
-    let mut state_mapping: HashMap<BTreeSet<usize>, usize> = HashMap::new();
+    let mut state_mapping: std::collections::HashMap<BTreeSet<usize>, usize> = std::collections::HashMap::new();
     let mut dfa_states: Vec<BTreeSet<usize>> = Vec::new();
 
-    // Start with the epsilon closure of the NFA's start state.
     let mut start_set = BTreeSet::new();
     start_set.insert(nfa.start);
-    let start_set_hash: HashSet<usize> = start_set.iter().cloned().collect();
+    let start_set_hash: std::collections::HashSet<usize> = start_set.iter().cloned().collect();
     let start_closure: BTreeSet<usize> = epsilon_closure(nfa, &start_set_hash).into_iter().collect();
 
-    // Assign index 0 to the start closure.
     state_mapping.insert(start_closure.clone(), 0);
     dfa_states.push(start_closure.clone());
 
-    // Check if the start closure contains any NFA accept state.
-    let nfa_accept_states: HashSet<usize> = nfa.accept.keys().cloned().collect();
-    if !start_closure.is_disjoint(&nfa_accept_states) {
-        // Collect the labels from all NFA accept states in the closure.
+    // Convert the keys of nfa.accept to a BTreeSet for comparison.
+    let nfa_accept_btree: BTreeSet<usize> = nfa.accept.keys().cloned().collect();
+    
+    if !start_closure.is_disjoint(&nfa_accept_btree) {
         let labels: Vec<String> = start_closure
             .iter()
             .filter_map(|s| nfa.accept.get(s))
@@ -87,22 +105,18 @@ pub fn convert_nfa_to_dfa(nfa: &NFA, alphabet: &HashSet<char>) -> DFA {
         dfa_accept.insert(0, labels.join(", "));
     }
 
-    let mut queue = VecDeque::new();
+    let mut queue = std::collections::VecDeque::new();
     queue.push_back(0);
 
     while let Some(current_index) = queue.pop_front() {
         let current_state_set = dfa_states[current_index].clone();
-
-        // Process each symbol in the alphabet.
         for &symbol in alphabet {
-            // Compute the move and then the epsilon closure.
-            let move_set = move_nfa(nfa, &current_state_set.iter().cloned().collect::<HashSet<_>>(), symbol);
+            let move_set = move_nfa(nfa, &current_state_set.iter().cloned().collect::<std::collections::HashSet<_>>(), symbol);
             if move_set.is_empty() {
                 continue;
             }
             let next_closure: BTreeSet<usize> = epsilon_closure(nfa, &move_set).into_iter().collect();
 
-            // Check if this state set has already been encountered.
             let next_index = if let Some(&index) = state_mapping.get(&next_closure) {
                 index
             } else {
@@ -110,9 +124,7 @@ pub fn convert_nfa_to_dfa(nfa: &NFA, alphabet: &HashSet<char>) -> DFA {
                 state_mapping.insert(next_closure.clone(), new_index);
                 dfa_states.push(next_closure.clone());
                 queue.push_back(new_index);
-
-                // If any state in the closure is an accepting state in the NFA, mark it as accepting.
-                if !next_closure.is_disjoint(&nfa_accept_states) {
+                if !next_closure.is_disjoint(&nfa_accept_btree) {
                     let labels: Vec<String> = next_closure
                         .iter()
                         .filter_map(|s| nfa.accept.get(s))
@@ -122,8 +134,6 @@ pub fn convert_nfa_to_dfa(nfa: &NFA, alphabet: &HashSet<char>) -> DFA {
                 }
                 new_index
             };
-
-            // Record the DFA transition.
             dfa_transitions.insert((current_index, symbol), next_index);
         }
     }
@@ -171,42 +181,37 @@ pub fn read_nfa_transitions_csv(file_path: &str) -> Result<HashMap<(usize, Optio
     Ok(transitions)
 }
 
-pub fn read_nfa_convert_to_dfa(path: &str) -> Option<(DFA,NFA)> {
-    // Read NFA transitions from CSV file.
-    let transitions = match read_nfa_transitions_csv(path) {
-        Ok(t) => t,
-        Err(_) => return None,
-    };
+// pub fn read_nfa_convert_to_dfa(path: &str) -> Option<(DFA,NFA)> {
+//     // Read NFA transitions from CSV file.
+//     let transitions = match read_nfa_transitions_csv(path) {
+//         Ok(t) => t,
+//         Err(_) => return None,
+//     };
 
-    // Define the NFA.
-    // For demonstration, we assume the start state is 0.
-    // Adjust the accept states as needed. Here we assume state 14 is accepting.
-    let accept_states = [
-        5, 6, 7, 10, 12, 13, 14, 18, 19, 20, 21, 22, 23, 24, 30, 31, 32, 33, 34,
-    ]
-    .iter()
-    .cloned()
-    .collect();
+//     // Define the NFA.
+//     // For demonstration, we assume the start state is 0.
+//     // Adjust the accept states as needed. Here we assume state 14 is accepting.
+//     let accept_states = read_zigzin_states_types("automato/Zigzin-NFA-states-types.json")?;
 
-    let nfa = NFA {
-        transitions,
-        start: 0,
-        accept: accept_states,
-    };
+//     let nfa = NFA {
+//         transitions,
+//         start: 0,
+//         accept: accept_states,
+//     };
 
-    // Build the alphabet for the NFA: gather all symbols from transitions (ignoring None).
-    let mut alphabet = HashSet::new();
-    for (&(_, symbol), _) in &nfa.transitions {
-        if let Some(ch) = symbol {
-            alphabet.insert(ch);
-        }
-    }
+//     // Build the alphabet for the NFA: gather all symbols from transitions (ignoring None).
+//     let mut alphabet = HashSet::new();
+//     for (&(_, symbol), _) in &nfa.transitions {
+//         if let Some(ch) = symbol {
+//             alphabet.insert(ch);
+//         }
+//     }
 
-    // Convert the NFA to a DFA.
-    let dfa = convert_nfa_to_dfa(&nfa, &alphabet);
+//     // Convert the NFA to a DFA.
+//     let dfa = convert_nfa_to_dfa(&nfa, &alphabet);
 
-    return Some((dfa,nfa));
-}
+//     return Some((dfa,nfa));
+// }
 
 /// Processes an input file using the provided DFA.
 /// It returns a tuple:
@@ -214,19 +219,18 @@ pub fn read_nfa_convert_to_dfa(path: &str) -> Option<(DFA,NFA)> {
 ///   - The state number at which processing stopped.
 /// If a transition for a character is missing, processing stops and the function returns false along with the last valid state.
 pub fn process_file_input(dfa: &DFA, file_path: &str) -> Result<(bool, usize), Box<dyn Error>> {
-    let content = fs::read_to_string(file_path)?;
+    let content = std::fs::read_to_string(file_path)?;
     let mut current_state = dfa.start;
 
     for ch in content.chars() {
         if let Some(&next_state) = dfa.transitions.get(&(current_state, ch)) {
             current_state = next_state;
         } else {
-            // Transition not found: halt processing and indicate an error.
             return Ok((false, current_state));
         }
     }
 
-    let accepted = dfa.accept.contains(&current_state);
+    let accepted = dfa.accept.contains_key(&current_state);
     Ok((accepted, current_state))
 }
 
