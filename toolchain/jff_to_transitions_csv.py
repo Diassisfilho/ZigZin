@@ -31,6 +31,9 @@ for transition in root.iter('transition'):
     elif read == "[a-z]":
         for c in string.ascii_lowercase:
             transitions.append([from_state, c, to_state])
+    elif read == "[A-Z]":
+        for c in string.ascii_uppercase:
+            transitions.append([from_state, c, to_state])
     else:
         transitions.append([from_state, read, to_state])
 
