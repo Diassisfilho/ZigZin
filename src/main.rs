@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::error::Error;
 
-mod lexer;
+pub mod lexer;
 use lexer::{
     process_file_input, DFA, read_accept_states_from_json, read_transitions_from_csv
 };
+pub mod tokens;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Read NFA transitions from CSV file.
@@ -20,18 +21,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         accept,
     };
 
-    println!("dfa acc: {:?}", dfa.accept);
-
     // Process input from a file using the DFA.
-    let (accepted, final_state, label) = process_file_input(&dfa, "tests/lexer_first_test.txt")?;
-    if accepted {
-        println!("Input accepted. Final state: {}, Final label: {}", final_state, label);
-    } else {
-        println!(
-            "Input rejected or error encountered. Last state: {}",
-            final_state
-        );
-    }
+    let tokens = process_file_input(&dfa, "tests/lexer_first_test.txt")?;
+    println!("{:?}",tokens);
 
     Ok(())
 }
