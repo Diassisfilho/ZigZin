@@ -22,7 +22,7 @@ for transition in root.iter('transition'):
     read = transition.find('read').text
     # Use 'ε' to denote an empty string (if the read tag is empty)
     if read is None or read == "":
-        read = 'ε'
+        read = None
     
     # Expand transitions for ranges [0-9] and [a-z]
     if read == "[0-9]":
