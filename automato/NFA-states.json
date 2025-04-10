@@ -4,10 +4,6 @@
     ],
     "final": [
         [
-            0,
-            "Initial"
-        ],
-        [
             5,
             "const"
         ],
@@ -41,11 +37,11 @@
         ],
         [
             19,
-            "lbrace"
+            "lcbracket"
         ],
         [
             20,
-            "rbrace"
+            "rcbracket"
         ],
         [
             21,
@@ -77,11 +73,79 @@
         ],
         [
             33,
-            "number"
+            "integer"
         ],
         [
             34,
             "float"
+        ],
+        [
+            40,
+            "if"
+        ],
+        [
+            43,
+            "else"
+        ],
+        [
+            45,
+            "for"
+        ],
+        [
+            50,
+            "while"
+        ],
+        [
+            53,
+            "var"
+        ],
+        [
+            57,
+            "true"
+        ],
+        [
+            62,
+            "false"
+        ],
+        [
+            63,
+            "minus"
+        ],
+        [
+            64,
+            "slash"
+        ],
+        [
+            65,
+            "asterisk"
+        ],
+        [
+            66,
+            "exclamation"
+        ],
+        [
+            67,
+            "lessthan"
+        ],
+        [
+            68,
+            "morethan"
+        ],
+        [
+            74,
+            "switch"
+        ],
+        [
+            79,
+            "break"
+        ],
+        [
+            80,
+            "lsbracket"
+        ],
+        [
+            81,
+            "rsbracket"
         ]
     ]
 }
